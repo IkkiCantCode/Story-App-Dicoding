@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import com.ikki.storyapp.data.ApiConfig
 import com.ikki.storyapp.data.AuthRepository
+import com.ikki.storyapp.data.StoryDatabase
 import com.ikki.storyapp.data.StoryRepository
 import com.ikki.storyapp.data.UserRepository
 import com.ikki.storyapp.data.pref.UserPreference
@@ -25,6 +26,7 @@ object Injection {
     fun provideRepository(context: Context): StoryRepository {
         val userRepository = provideUserRepository(context)
         val apiService = ApiConfig.getApiService()
-        return StoryRepository.getInstance(apiService, userRepository)
+        val database = StoryDatabase.getInstance(context)
+        return StoryRepository.getInstance(apiService, userRepository, database)
     }
 }

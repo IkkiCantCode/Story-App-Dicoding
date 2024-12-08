@@ -14,6 +14,8 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.view.ViewCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.ikki.storyapp.DetailStory
@@ -24,6 +26,8 @@ import com.ikki.storyapp.response.ListStoryItem
 import com.ikki.storyapp.view.post.PostActivity
 import com.ikki.storyapp.view.ui.StoryAdapter
 import com.ikki.storyapp.view.welcome.WelcomeActivity
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private val viewModel by viewModels<MainViewModel> {
@@ -45,7 +49,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        storyAdapter = StoryAdapter(emptyList()) { story, imageView, textView ->
+        storyAdapter = StoryAdapter { story, imageView, textView ->
             val intent = Intent(this, DetailStory::class.java).apply {
                 putExtra("story_image_url", story.photoUrl)
                 putExtra("story_author", story.name)
@@ -71,23 +75,42 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.session.observe(this) { user ->
             if (user.isLogin) {
-                viewModel.getStories("Bearer ${user.token}")
+                // Observe Paging data Flow
+                viewModel.stories.observe(this) { flow ->
+                    lifecycleScope.launch {
+                        flow.collectLatest { pagingData ->
+                            // Submit the collected PagingData to the adapter
+                            storyAdapter.submitData(pagingData)
+                        }
+                    }
+                }
+
+                // Listen to the refresh trigger and reload the data
+                viewModel.refreshTrigger.observe(this) {
+                    // Manually trigger a refresh of the stories list
+                    lifecycleScope.launch {
+                        // Clear any cached data
+                        storyAdapter.refresh()
+                    }
+                }
+
             } else {
                 navigateToWelcome()
             }
         }
 
-        viewModel.stories.observe(this) { stories ->
-            updateStories(stories)
+        // Add a loading state observer
+        lifecycleScope.launch {
+            storyAdapter.loadStateFlow.collectLatest { loadStates ->
+                // Handle loading states, show/hide progress bar etc.
+                val isLoading = loadStates.refresh is LoadState.Loading
+                // Update UI accordingly
+            }
         }
 
         viewModel.error.observe(this) { errorMessage ->
             Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun updateStories(stories: List<ListStoryItem>) {
-        storyAdapter.updateData(stories)
     }
 
     private fun setupToolbar() {
@@ -117,7 +140,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        viewModel.getStories("Bearer ${viewModel.session.value?.token ?: ""}")
     }
 
     private fun navigateToWelcome() {

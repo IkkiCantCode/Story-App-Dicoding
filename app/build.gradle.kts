@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    kotlin("kapt")
 }
 
 android {
@@ -67,4 +68,10 @@ dependencies {
     implementation (libs.okhttp)
     implementation (libs.okhttp.v4110)
     implementation(libs.logging.interceptor)
+
+    implementation(libs.androidx.paging.runtime.ktx)
+    implementation (libs.androidx.room.paging)
+    implementation (libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
 }
